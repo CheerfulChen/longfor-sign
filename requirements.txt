@@ -1,7 +1,5 @@
-requests>=2.31.0
-Pillow>=10.0.0
-
-# 验证码图像识别相关
-opencv-python>=4.8.0
-numpy>=1.24.0
-matplotlib>=3.7.0
+requests==2.32.5
+Pillow==11.3.0
+opencv-python-headless==4.12.0.88
+numpy==2.0.2; python_version < "3.10"
+numpy==2.2.6; python_version >= "3.10"

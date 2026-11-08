@@ -79,3 +79,16 @@ desktop.ini
 *.bak
 *.backup
 /human/
+
+# Docker server
+.env.server
+/data/
+/backups/
+.pytest_cache/
+!requirements-server.txt
+!tests/test_*.py
+
+.state/
+.env.*
+!.env.example
+!requirements.txt

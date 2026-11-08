@@ -1,0 +1,26 @@
+name: Validate source and deployment packages
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.9', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -r requirements-server.txt pytest
+      - run: python -m pytest -q
+      - run: python scripts/build_functiongraph.py --version dev
+      - uses: actions/upload-artifact@v4
+        with:
+          name: functiongraph-packages-python-${{ matrix.python }}
+          path: dist/functiongraph/

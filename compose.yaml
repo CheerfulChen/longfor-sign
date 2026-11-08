@@ -1,0 +1,23 @@
+name: longfor-sign
+services:
+  app:
+    build: .
+    image: longfor-sign:local
+    restart: unless-stopped
+    env_file: .env.server
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "127.0.0.1:8088:8000"
+    volumes:
+      - longfor_data:/data
+    stop_grace_period: 180s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+volumes:
+  longfor_data:

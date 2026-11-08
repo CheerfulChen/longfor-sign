@@ -1,4 +1,4 @@
-name: 龙湖天街自动签到
+name: 龙湖天街自动签到（保留，不推荐）
 
 on:
   # 定时任务：每天 9 点触发
@@ -9,9 +9,17 @@ on:
   # 允许手动触发
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: longfor-daily-sign
+  cancel-in-progress: false
+
 jobs:
   sign-in:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: 检出代码
@@ -32,6 +40,15 @@ jobs:
         env:
           LONGFOR_TOKEN: ${{ secrets.LONGFOR_TOKEN }}
           LONGFOR_DXRISK_TOKEN: ${{ secrets.LONGFOR_DXRISK_TOKEN }}
+          LONGFOR_TOKENS_JSON: ${{ secrets.LONGFOR_TOKENS_JSON }}
+          LONGFOR_DXRISK_TOKENS_JSON: ${{ secrets.LONGFOR_DXRISK_TOKENS_JSON }}
+          SIGN_ACCOUNT_IDS_JSON: ${{ vars.SIGN_ACCOUNT_IDS_JSON }}
+          SIGN_ACCOUNT_NAMES_JSON: ${{ vars.SIGN_ACCOUNT_NAMES_JSON }}
+          SIGN_APP_ACCOUNT_IDS_JSON: ${{ vars.SIGN_APP_ACCOUNT_IDS_JSON }}
+          LONGFOR_APP_TOKENS_JSON: ${{ secrets.LONGFOR_APP_TOKENS_JSON }}
+          LONGFOR_APP_DXRISK_TOKENS_JSON: ${{ secrets.LONGFOR_APP_DXRISK_TOKENS_JSON }}
+          LONGFOR_MINI_USER_AGENTS_JSON: ${{ vars.LONGFOR_MINI_USER_AGENTS_JSON }}
+          LONGFOR_APP_USER_AGENTS_JSON: ${{ vars.LONGFOR_APP_USER_AGENTS_JSON }}
           BARK_KEY: ${{ secrets.BARK_KEY }}
           BARK_SERVER: ${{ vars.BARK_SERVER }}
           SAVE_CAPTCHA_IMAGES: 'true'  # 启用图片保存功能

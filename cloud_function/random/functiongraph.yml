@@ -1,0 +1,41 @@
+HcCrmTemplateVersion: v1
+Resources:
+  longfor-sign-random:
+    Type: HC::Serverless::Function
+    Properties:
+      Handler: main.main
+      Runtime: Python3.9
+      CodeType: inline
+      CodeFileName: main.zip
+      CodeUrl: ''
+      Description: Longfor Sign FunctionGraph random
+      MemorySize: 128
+      Timeout: 900
+      Version: latest
+      Environment:
+        Variables:
+          LONGFOR_TOKENS_JSON: '[]'
+          LONGFOR_DXRISK_TOKENS_JSON: '[]'
+          BARK_KEY: ''
+          BARK_SERVER: https://api.day.app
+          SIGN_ACCOUNT_NAMES_JSON: '["账号1","账号2","账号3","账号4"]'
+          SIGN_ACCOUNT_IDS_JSON: '["account-1","account-2","account-3","account-4"]'
+          SIGN_OBS_BUCKET: ''
+          SIGN_OBS_ENDPOINT: obs.cn-east-3.myhuaweicloud.com
+          SIGN_OBS_PREFIX: longfor-sign
+          SIGN_NOTIFY_PLAN: '0'
+          SIGN_APP_ACCOUNT_IDS_JSON: '[]'
+          LONGFOR_APP_DXRISK_TOKENS_JSON: '["","","",""]'
+          LONGFOR_APP_TOKENS_JSON: ''
+          LONGFOR_MINI_USER_AGENTS_JSON: ''
+          LONGFOR_APP_USER_AGENTS_JSON: ''
+        EncryptedVariables: {}
+      InitializerHandler: ''
+      InitializerTimeout: 0
+      PreStopHandler: ''
+      PreStopTimeout: 0
+      EnterpriseProjectId: '0'
+      FuncType: v2
+      CustomImage: {}
+      CloudDebug: ''
+      Region: cn-east-3

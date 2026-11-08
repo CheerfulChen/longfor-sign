@@ -1,0 +1,44 @@
+HcCrmTemplateVersion: v1
+Resources:
+  longfor-sign-fixed:
+    Type: HC::Serverless::Function
+    Properties:
+      Handler: main.main
+      Runtime: Python3.9
+      CodeType: inline
+      CodeFileName: main.zip
+      CodeUrl: ''
+      Description: Longfor Sign FunctionGraph fixed
+      MemorySize: 128
+      Timeout: 900
+      Version: latest
+      Environment:
+        Variables:
+          LONGFOR_TOKENS_JSON: '[]'
+          LONGFOR_DXRISK_TOKENS_JSON: '[]'
+          BARK_KEY: ''
+          BARK_SERVER: https://api.day.app
+          SIGN_START_DELAY_MIN_SECONDS: '0'
+          SIGN_START_DELAY_MAX_SECONDS: '300'
+          SIGN_ACCOUNT_INTERVAL_MIN_SECONDS: '20'
+          SIGN_ACCOUNT_INTERVAL_MAX_SECONDS: '60'
+          LONGFOR_APP_TOKENS_JSON: ''
+          LONGFOR_MINI_USER_AGENTS_JSON: ''
+          LONGFOR_APP_USER_AGENTS_JSON: ''
+          SIGN_ACCOUNT_IDS_JSON: ''
+          SIGN_ACCOUNT_NAMES_JSON: ''
+          SIGN_APP_ACCOUNT_IDS_JSON: '[]'
+          LONGFOR_APP_DXRISK_TOKENS_JSON: ''
+          SIGN_OBS_BUCKET: ''
+          SIGN_OBS_ENDPOINT: obs.cn-east-3.myhuaweicloud.com
+          SIGN_OBS_PREFIX: longfor-sign-fixed
+        EncryptedVariables: {}
+      InitializerHandler: ''
+      InitializerTimeout: 0
+      PreStopHandler: ''
+      PreStopTimeout: 0
+      EnterpriseProjectId: '0'
+      FuncType: v2
+      CustomImage: {}
+      CloudDebug: ''
+      Region: cn-east-3
