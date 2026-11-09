@@ -8,7 +8,7 @@ import os
 
 _DEBUG_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def find_gap_position_v2(bg_image_path: str, slider_image_path: str, debug: bool = False, method: str = "shape") -> Tuple[int, int]:
+def find_gap_position_v2(bg_image_path: str, slider_image_path: str, debug: bool = False, method: str = "shape", apply_legacy_offset: bool = True) -> Tuple[int, int]:
     """
     改进的缺口识别算法 - 多方法融合
 
@@ -86,7 +86,7 @@ def find_gap_position_v2(bg_image_path: str, slider_image_path: str, debug: bool
 
     # 6. 应用偏移修正
     # 滑块起始位置的偏移量
-    OFFSET = 91
+    OFFSET = 91 if apply_legacy_offset else 0
     x_detected = x
     x_adjusted = max(0, x - OFFSET)
 
@@ -297,6 +297,6 @@ def detect_by_shape_match(bg: np.ndarray, slider: np.ndarray, debug: bool = Fals
 
     return x, y, confidence
 
-def find_gap_position(bg_image_path: str, slider_image_path: str, debug: bool = False, method: str = "shape") -> Tuple[int, int]:
+def find_gap_position(bg_image_path: str, slider_image_path: str, debug: bool = False, method: str = "shape", apply_legacy_offset: bool = True) -> Tuple[int, int]:
     """向后兼容的函数"""
-    return find_gap_position_v2(bg_image_path, slider_image_path, debug, method)
+    return find_gap_position_v2(bg_image_path, slider_image_path, debug, method, apply_legacy_offset)

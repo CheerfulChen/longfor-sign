@@ -90,3 +90,45 @@ def test_original_trajectory_and_encoder_are_packaged_together():
     trajectory=generate_realistic_trajectory(100)
     result=generate_ac(trajectory,trajectory[-1][0],trajectory[-1][1],sid='synthetic-session')
     assert isinstance(result,str) and result.startswith('s_v3#')
+
+
+@pytest.mark.parametrize('width,height,raw_x,raw_y,server_y,expected_x,expected_y',[
+    (400,200,296,91,68,197,68),
+    (400,200,296,91,None,197,68),
+    (300,150,222,68,68,197,68),
+    (800,400,592,182,0,197,0),
+    (400,200,253,61,45,164,45),
+])
+def test_image_coordinates_are_scaled_before_trajectory_and_ac(
+        tmp_path,caplog,width,height,raw_x,raw_y,server_y,expected_x,expected_y):
+    from PIL import Image
+    from core.captcha_support import image_recognition_v2 as recognition
+    from core.captcha_support import trajectory_enhanced as trajectories
+    from core.captcha_support import ac_encoder_full as encoder
+    def download(session,path,target):
+        Image.new('RGB',(width,height) if path=='background' else (67,67)).save(target)
+    data={'p1':'background','p2':'slider','sid':'private-session'}
+    if server_y is not None:data['y']=server_y
+    trajectory=[(0,0,0),(expected_x,0,1000)]
+    with patch.object(captcha,'download',side_effect=download), \
+         patch.object(recognition,'find_gap_position',return_value=(raw_x,raw_y)) as recognize, \
+         patch.object(trajectories,'generate_realistic_trajectory',return_value=trajectory) as generate, \
+         patch.object(encoder,'generate_ac',return_value='private-ac') as ac:
+        payload=captcha.image_payload(Mock(),data,tmp_path)
+    assert recognize.call_args.kwargs['apply_legacy_offset'] is False
+    generate.assert_called_once_with(expected_x)
+    ac.assert_called_once_with(trajectory,expected_x,expected_y,sid='private-session')
+    assert payload=={'ac':'private-ac','x':expected_x,'y':expected_y}
+    assert '验证码坐标换算' in caplog.text
+    assert 'private-session' not in caplog.text and 'private-ac' not in caplog.text
+
+
+def test_raw_image_matching_can_skip_legacy_offset():
+    import numpy as np
+    from core.captcha_support import image_recognition_v2 as recognition
+    with patch.object(recognition.cv2,'imread',side_effect=lambda *args:np.zeros((200,400,3),dtype=np.uint8)), \
+         patch.object(recognition,'detect_by_contour',return_value=(296,91,0.5)), \
+         patch.object(recognition,'detect_by_color_diff',return_value=(296,91,0.5)), \
+         patch.object(recognition,'detect_by_shape_match',return_value=(296,91,0.5)):
+        assert recognition.find_gap_position('bg','slider',apply_legacy_offset=False)==(296,91)
+        assert recognition.find_gap_position('bg','slider')==(205,91)

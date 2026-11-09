@@ -3,6 +3,7 @@
 Uses a per-attempt temporary directory; never logs verification credentials.
 """
 import random
+import logging
 import os
 import json
 import shutil
@@ -19,6 +20,10 @@ import requests
 VERIFY_BASE = 'https://ly-ver.longhu.net'
 APP_ID = 'd1a43734fc59aeae9f1562dbd70fdf54'
 MAX_IMAGE = 2 * 1024 * 1024
+CAPTCHA_WIDTH = 300
+CAPTCHA_HEIGHT = 150
+CAPTCHA_SLIDER_SIZE = 50
+LOG = logging.getLogger(__name__)
 
 
 def _json(response):
@@ -72,10 +77,20 @@ def image_payload(session, data, directory):
         if not isinstance(order, list) or not order or sorted(order) != list(range(len(order))) or len(order) > width:
             raise ValueError('Invalid image slice order')
         bg = Path(restore_image_correct(str(bg), order, width//len(order), debug=False))
-    x, detected_y = find_gap_position(str(bg), str(slider), debug=False)
-    y = int(data.get('y', detected_y))
-    if not 0 <= x <= width or not 0 <= y <= height:
+    # Recognition returns the template centre x and top y in source-image pixels.
+    # Convert to the same display coordinates requested in /api/a, before AC/trajectory.
+    raw_x, detected_y = find_gap_position(str(bg), str(slider), debug=False,
+                                         apply_legacy_offset=False)
+    if not 0 <= raw_x <= width or not 0 <= detected_y <= height:
         raise ValueError('Invalid verification coordinates')
+    x = max(0, int(raw_x * CAPTCHA_WIDTH / width - CAPTCHA_SLIDER_SIZE / 2))
+    server_y = data.get('y')
+    y = int(server_y) if server_y is not None else int(detected_y * CAPTCHA_HEIGHT / height)
+    if not 0 <= x <= CAPTCHA_WIDTH or not 0 <= y <= CAPTCHA_HEIGHT:
+        raise ValueError('Invalid verification coordinates')
+    LOG.warning('验证码坐标换算：image=%sx%s raw_center_x=%s raw_top_y=%s x=%s y=%s y_source=%s',
+                width, height, raw_x, detected_y, x, y,
+                'server' if server_y is not None else 'scaled_image')
     trajectory = generate_realistic_trajectory(x)
     final_x, final_y = trajectory[-1][0], y + trajectory[-1][1]
     return {'ac': generate_ac(trajectory, final_x, final_y, sid=data['sid']),
@@ -112,7 +127,7 @@ def solve(user_agent, is_app=False):
                 return None
             challenge = secrets.token_hex(4) + ''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range(32))
             aid = f'dx-{int(time.time()*1000)}-{secrets.randbelow(90000000)+10000000}-1'
-            params = {'w':300,'h':150,'s':50,'ak':APP_ID,'c':challenge,'jsv':'1.3.41.372',
+            params = {'w':CAPTCHA_WIDTH,'h':CAPTCHA_HEIGHT,'s':CAPTCHA_SLIDER_SIZE,'ak':APP_ID,'c':challenge,'jsv':'1.3.41.372',
                       'aid':aid,'wp':1,'de':0,'uid':'','lf':0,'tpc':'','_r':random.random()}
             data = _json(session.get(VERIFY_BASE+'/api/a',params=params,timeout=(5,10),allow_redirects=False))
             if data.get('success') is not True or data.get('result') != 1 or not data.get('sid'):
@@ -121,6 +136,12 @@ def solve(user_agent, is_app=False):
             payload.update(ak=APP_ID,c=challenge,uid='',jsv='1.3.41.372',sid=data['sid'],aid=aid)
             result = _json(session.post(VERIFY_BASE+'/api/v1',data=payload,timeout=(5,10),allow_redirects=False))
             _record(directory,payload,result)
+            code = str(result.get('code'))
+            code = code if code.isascii() and code.isdecimal() and len(code) <= 12 else 'unknown'
+            reason = result.get('msg')
+            reason = reason if reason in {'POSITION_MISMATCH','TIMEOUT','VERIFY_FAILED'} else 'other'
+            LOG.warning('验证码验证结果：success=%s code=%s reason=%s',
+                        result.get('success') is True, code, reason)
             token = result.get('token')
             if result.get('success') is not True or not isinstance(token,str) or not token or len(token)>2048:
                 return None
@@ -129,6 +150,7 @@ def solve(user_agent, is_app=False):
             # Preserve the complete value returned by verification, including any suffix.
             # Do not synthesize or append a second challenge for either client.
             return token
-    except Exception:
+    except Exception as error:
+        LOG.warning('验证码处理异常：%s', type(error).__name__)
         # Do not reflect response bodies, image URLs, credentials or exception messages.
         return None
