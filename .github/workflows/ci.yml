@@ -7,8 +7,10 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Python 3.9 is unavailable on Ubuntu 26.04; keep the compatibility runner stable.
+    runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         python: ['3.9', '3.12']
     steps:
