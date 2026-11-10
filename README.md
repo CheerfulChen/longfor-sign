@@ -13,7 +13,7 @@
 [![FunctionGraph](https://img.shields.io/badge/Huawei_Cloud-FunctionGraph-F66F6A?style=flat-square)](docs/functiongraph.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-70E3BB?style=flat-square)](LICENSE)
 
-**[快速开始](#快速开始) · [部署方式](#选择部署方式) · [账号配置](docs/configuration.md) · [升级说明](MIGRATION.md) · [开发手记](docs/development-story.md)**
+**[快速开始](#快速开始) · [部署方式](#选择部署方式) · [账号配置](docs/configuration.md) · [升级说明](MIGRATION.md) · [开发手记](https://blog.chiran.top/posts/%E7%94%9F%E6%B4%BB%E6%97%A5%E5%B8%B8/Longfor-Sign)**
 
 [使用反馈](https://github.com/CheerfulChen/longfor-sign/issues) · [版本发布](https://github.com/CheerfulChen/longfor-sign/releases)
 
@@ -123,7 +123,7 @@ python main.py
 | [凭据说明](docs/credentials.md) | 登录、风控、验证码与续期 |
 | [版本说明](docs/versions.md) | 公共核心、目录与构建约定 |
 | [迁移说明](MIGRATION.md) | 旧环境升级到统一核心 |
-| [开发手记](docs/development-story.md) | 项目经历与后续博客链接 |
+| [开发手记](https://blog.chiran.top/posts/%E7%94%9F%E6%B4%BB%E6%97%A5%E5%B8%B8/Longfor-Sign) | 从停车需求到验证码、云函数与 Docker 的开发过程 |
 
 ## 开发与验证
 
