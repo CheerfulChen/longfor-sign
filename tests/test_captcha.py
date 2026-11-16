@@ -38,7 +38,7 @@ def test_failed_or_unsupported_verification_does_not_return_credentials():
     session=Mock();session.headers={}
     response=Mock();response.json.return_value={'code':'200','data':'other'}
     session.get.return_value=response
-    with patch.object(captcha.requests,'Session') as factory,patch.object(captcha,'image_payload') as images:
+    with patch.object(captcha.requests,'Session') as factory,patch.object(captcha,'image_payload') as images,patch.object(captcha.time,'sleep'):
         factory.return_value.__enter__.return_value=session
         assert captcha.solve('ua',True) is None
     images.assert_not_called();session.post.assert_not_called()
@@ -132,3 +132,70 @@ def test_raw_image_matching_can_skip_legacy_offset():
          patch.object(recognition,'detect_by_shape_match',return_value=(296,91,0.5)):
         assert recognition.find_gap_position('bg','slider',apply_legacy_offset=False)==(296,91)
         assert recognition.find_gap_position('bg','slider')==(205,91)
+
+
+@pytest.mark.parametrize('is_app',[False,True])
+def test_second_verification_gets_fresh_session_and_challenge(is_app,caplog):
+    def response(data):
+        result=Mock();result.json.return_value=data;return result
+    sessions=[]; contexts=[]; directories=[]
+    for index in range(2):
+        session=Mock();session.headers={}
+        session.get.side_effect=[response({'code':'200','data':'c'}),
+            response({'success':True,'result':1,'sid':f'private-sid-{index}'})]
+        result=({'success':False,'code':'4012','msg':'POSITION_MISMATCH'} if index==0
+                else {'success':True,'token':'private-verified:challenge'})
+        session.post.return_value=response(result)
+        context=Mock();context.__enter__=Mock(return_value=session);context.__exit__=Mock(return_value=False)
+        sessions.append(session);contexts.append(context)
+    def images(session,data,directory):
+        directories.append(directory)
+        (Path(directory)/'image.png').write_bytes(b'temporary-image')
+        return {'x':197,'y':68,'ac':'private-ac'}
+    with patch.object(captcha.requests,'Session',side_effect=contexts) as factory, \
+         patch.object(captcha,'image_payload',side_effect=images), \
+         patch.object(captcha,'_record') as record, \
+         patch.object(captcha.time,'sleep') as sleep:
+        assert captcha.solve('app-ua' if is_app else 'mini-ua',is_app)=='private-verified:challenge'
+    assert factory.call_count==2 and record.call_count==2
+    sleep.assert_called_once_with(2)
+    assert len(set(directories))==2 and all(not Path(d).exists() for d in directories)
+    first,second=[s.get.call_args_list[1].kwargs['params'] for s in sessions]
+    assert first['c']!=second['c'] and first['aid']!=second['aid']
+    for i,session in enumerate(sessions):
+        payload=session.post.call_args.kwargs['data']
+        params=session.get.call_args_list[1].kwargs['params']
+        assert payload['sid']==f'private-sid-{i}'
+        assert payload['c']==params['c'] and payload['aid']==params['aid']
+        assert session.headers['User-Agent']==('app-ua' if is_app else 'mini-ua')
+    assert 'attempt=1/2' in caplog.text and 'attempt=2/2' in caplog.text
+    assert all(secret not in caplog.text for secret in ('private-sid','private-verified','private-ac'))
+
+
+@pytest.mark.parametrize('outcomes,expected,attempts',[
+    (['verified'],'verified',1),
+    ([None,'verified'],'verified',2),
+    ([None,None],None,2),
+])
+def test_verification_retry_budget(outcomes,expected,attempts):
+    with patch.object(captcha,'_solve_once',side_effect=outcomes) as once, \
+         patch.object(captcha.time,'sleep') as sleep:
+        assert captcha.solve('captured-ua',True)==expected
+    assert once.call_count==attempts
+    assert all(c.args==('captured-ua',True) for c in once.call_args_list)
+    assert sleep.call_count==attempts-1
+
+
+def test_image_error_is_caught_and_second_round_can_succeed(caplog):
+    session=Mock();session.headers={}
+    def response(data):
+        result=Mock();result.json.return_value=data;return result
+    session.get.side_effect=[response({'code':'200','data':'c'}),response({'success':True,'result':1,'sid':'private-sid'})]*2
+    session.post.return_value=response({'success':True,'token':'verified'})
+    with patch.object(captcha.requests,'Session') as factory, \
+         patch.object(captcha,'image_payload',side_effect=[ValueError('private-credential'),{'x':100,'y':41,'ac':'private-ac'}]), \
+         patch.object(captcha.time,'sleep'):
+        factory.return_value.__enter__.return_value=session
+        assert captcha.solve('ua',True)=='verified'
+    assert factory.call_count==2 and session.post.call_count==1
+    assert 'ValueError' in caplog.text and 'private-credential' not in caplog.text

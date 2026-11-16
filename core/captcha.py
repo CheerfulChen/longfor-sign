@@ -23,6 +23,8 @@ MAX_IMAGE = 2 * 1024 * 1024
 CAPTCHA_WIDTH = 300
 CAPTCHA_HEIGHT = 150
 CAPTCHA_SLIDER_SIZE = 50
+CAPTCHA_MAX_ATTEMPTS = 2
+CAPTCHA_RETRY_DELAY_SECONDS = 2
 LOG = logging.getLogger(__name__)
 
 
@@ -114,8 +116,8 @@ def _record(directory, payload, result):
         pass  # Optional local diagnostics must not change verification outcome.
 
 
-def solve(user_agent, is_app=False):
-    """Try one original-style challenge; return a request header value or None."""
+def _solve_once(user_agent, is_app=False):
+    """One fresh session/challenge; return a request header value or None."""
     try:
         with requests.Session() as session, tempfile.TemporaryDirectory(prefix='longfor-captcha-') as directory:
             session.trust_env = False
@@ -154,3 +156,19 @@ def solve(user_agent, is_app=False):
         LOG.warning('验证码处理异常：%s', type(error).__name__)
         # Do not reflect response bodies, image URLs, credentials or exception messages.
         return None
+
+
+def solve(user_agent, is_app=False):
+    """Try at most two fresh challenges; never replay the business request here."""
+    for attempt in range(1, CAPTCHA_MAX_ATTEMPTS + 1):
+        LOG.warning('验证码处理：client=%s attempt=%s/%s',
+                    'APP' if is_app else '小程序', attempt, CAPTCHA_MAX_ATTEMPTS)
+        token = _solve_once(user_agent, is_app)
+        if token:
+            return token
+        if attempt < CAPTCHA_MAX_ATTEMPTS:
+            LOG.warning('验证码本轮失败，等待 %s 秒后重新获取验证码重试一次',
+                        CAPTCHA_RETRY_DELAY_SECONDS)
+            time.sleep(CAPTCHA_RETRY_DELAY_SECONDS)
+    LOG.warning('验证码连续两轮未通过，结束本次验证，不继续重试')
+    return None
